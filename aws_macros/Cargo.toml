@@ -1,0 +1,35 @@
+[package]
+name = "aws-macros"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
+
+[lib]
+name = "aws_macros"
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { version = "1.*", default-features = false, features = [
+  "proc-macro",
+] }
+quote = { version = "1.*", default-features = false }
+syn = { version = "2.*", default-features = false, features = [
+  "full",
+  "extra-traits",
+  "proc-macro",
+  "parsing",
+  "printing",
+  "clone-impls",
+] }
+
+[lints]
+workspace = true
