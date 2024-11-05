@@ -1,3 +1,6 @@
+.PHONY: check
+check: | fmt lint test
+
 .PHONY: docs
 docs:
 	cargo watch -- cargo doc
