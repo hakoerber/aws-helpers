@@ -159,14 +159,14 @@ where
 pub struct TagKey(String);
 helpers::impl_string_wrapper!(TagKey);
 
-/// A tag generic over it's containing value type.
+/// A tag generic over its containing value type.
 ///
 /// There are two ways to construct a `Tag`:
 ///
 /// * You already have a `T`: Just use [`new()`](Self::new())
-/// ```rust
-/// use aws::tags::Tag;
 ///
+/// ```rust
+/// # use aws::tags::Tag;
 /// let tag = Tag::<bool>::new("foo".to_owned(), true);
 /// ```
 ///
@@ -176,8 +176,7 @@ helpers::impl_string_wrapper!(TagKey);
 ///   for `String`:
 ///
 /// ```rust
-/// use aws::tags::Tag;
-///
+/// # use aws::tags::Tag;
 /// let tag = Tag::<bool>::parse("foo".to_owned(), "true".to_owned()).unwrap();
 /// ```
 ///
