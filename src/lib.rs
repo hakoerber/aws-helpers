@@ -1,6 +1,6 @@
 //! Provides an opinionated interface to the AWS API
 
-extern crate self as aws;
+extern crate self as aws_lib;
 
 use std::{
     fmt::{self, Debug},

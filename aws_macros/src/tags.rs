@@ -152,7 +152,7 @@ fn parse_struct(input: syn::ItemStruct) -> Input {
 }
 
 fn build_output(input: Input) -> TokenStream {
-    let root = quote! { ::aws };
+    let root = quote! { ::aws_lib };
 
     let ident = input.ident;
     let vis = input.vis;

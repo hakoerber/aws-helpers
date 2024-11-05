@@ -105,7 +105,7 @@ fn parse_transparent_enum(mut e: syn::ItemEnum) -> (Translator, syn::Item) {
 }
 
 pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let root = quote! {::aws};
+    let root = quote! {::aws_lib};
 
     let expr: syn::Expr = syn::parse(attr).expect("expected expr in macro attribute");
 

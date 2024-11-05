@@ -12,7 +12,7 @@ methods to create a struct instance for an instance [`TagList`], and turn a
 struct instance back into a [`TagList`]:
 
 ```rust
-use aws::tags::{Tags, TagList, RawTag};
+use aws_lib::tags::{Tags, TagList, RawTag};
 
 #[Tags]
 struct MyTags {
@@ -55,7 +55,7 @@ There is a [`macro@Tag`] macro that selects the strategy, which can then be used
 in a struct that is using `#[Tags]`:
 
 ```rust
-use aws::tags::{Tag, Tags};
+use aws_lib::tags::{Tag, Tags};
 use serde::{Serialize, Deserialize};
 
 #[Tag(translate = serde)]

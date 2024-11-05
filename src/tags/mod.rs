@@ -166,7 +166,7 @@ helpers::impl_string_wrapper!(TagKey);
 /// * You already have a `T`: Just use [`new()`](Self::new())
 ///
 /// ```rust
-/// # use aws::tags::Tag;
+/// # use aws_lib::tags::Tag;
 /// let tag = Tag::<bool>::new("foo".to_owned(), true);
 /// ```
 ///
@@ -176,7 +176,7 @@ helpers::impl_string_wrapper!(TagKey);
 ///   for `String`:
 ///
 /// ```rust
-/// # use aws::tags::Tag;
+/// # use aws_lib::tags::Tag;
 /// let tag = Tag::<bool>::parse("foo".to_owned(), "true".to_owned()).unwrap();
 /// ```
 ///
