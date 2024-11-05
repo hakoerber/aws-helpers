@@ -403,4 +403,49 @@ mod tests {
             ])
         );
     }
+
+    #[test]
+    fn test_transparent_tag() {
+        #[Tag(translate = transparent)]
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct MyTag(String);
+
+        assert_eq!(
+            MyTag::into_raw_tag(MyTag("test".to_owned())),
+            RawTagValue::new("test".to_owned())
+        );
+        assert_eq!(
+            MyTag::from_raw_tag(RawTagValue::new("test".to_owned())).unwrap(),
+            MyTag("test".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_enums() {
+        #[Tag(translate = transparent)]
+        #[derive(PartialEq, Debug)]
+        enum MyCoolioTag {
+            A,
+            #[tag(rename = "C")]
+            B,
+        }
+
+        assert_eq!(
+            MyCoolioTag::into_raw_tag(MyCoolioTag::A),
+            RawTagValue::new("A".to_owned())
+        );
+        assert_eq!(
+            MyCoolioTag::from_raw_tag(RawTagValue::new("A".to_owned())).unwrap(),
+            MyCoolioTag::A
+        );
+
+        assert_eq!(
+            MyCoolioTag::into_raw_tag(MyCoolioTag::B),
+            RawTagValue::new("C".to_owned())
+        );
+        assert_eq!(
+            MyCoolioTag::from_raw_tag(RawTagValue::new("C".to_owned())).unwrap(),
+            MyCoolioTag::B
+        );
+    }
 }
