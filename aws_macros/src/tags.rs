@@ -24,6 +24,25 @@ struct Element {
     attrs: Vec<syn::Attribute>,
 }
 
+fn is_cfg_attribute(attr: &syn::Attribute) -> bool {
+    match attr.meta {
+        syn::Meta::List(ref meta_list) => {
+            let segments = &meta_list.path.segments;
+            match (segments.first(), segments.len()) {
+                (Some(segment), 1) => segment.ident == "cfg",
+                _ => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+fn cfg_attrs(v: &[syn::Attribute]) -> Vec<&syn::Attribute> {
+    v.iter()
+        .filter(|attr: &&syn::Attribute| is_cfg_attribute(attr))
+        .collect()
+}
+
 fn parse_type(input: syn::Type) -> (syn::Path, ElementKind) {
     match input {
         syn::Type::Path(ty) => {
@@ -203,7 +222,7 @@ fn build_output(input: Input) -> TokenStream {
         let params = input.elements.iter().map(|element| {
             let ident = &element.ident;
             let ty = &element.ty;
-            let attrs = &element.attrs;
+            let attrs = cfg_attrs(&element.attrs);
             match element.kind {
                 ElementKind::Required => quote! {
                     #(#attrs)
@@ -223,7 +242,7 @@ fn build_output(input: Input) -> TokenStream {
             .iter()
             .map(|element| {
                 let ident = &element.ident;
-                let attrs = &element.attrs;
+                let attrs = cfg_attrs(&element.attrs);
                 quote! {
                     #(#attrs)
                     *
@@ -232,11 +251,11 @@ fn build_output(input: Input) -> TokenStream {
             })
             .collect();
 
-        let from_tags_fields: Vec<proc_macro2::TokenStream>= input.elements.iter().map(|element| {
+        let from_tags_fields: Vec<proc_macro2::TokenStream> = input.elements.iter().map(|element| {
             let ident = &element.ident;
             let ty = &element.ty;
             let tag_name = &element.name;
-            let attrs = &element.attrs;
+            let attrs = cfg_attrs(&element.attrs);
 
             let try_convert = quote! {
                 let value: ::std::result::Result<#ty, #root::tags::ParseTagsError> = <#ty as #root::tags::TagValue<#ty>>::from_raw_tag(value)
