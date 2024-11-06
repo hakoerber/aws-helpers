@@ -209,7 +209,7 @@ pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
                     }
                 }
 
-                impl From<#name> for RawTagValue {
+                impl From<#name> for #root::tags::RawTagValue {
                     fn from(value: #name) -> Self {
                         <#ty as #root::tags::TagValue<#ty>>::into_raw_tag(value.0)
                     }
