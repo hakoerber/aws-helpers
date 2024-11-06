@@ -7,11 +7,12 @@ docs:
 
 .PHONY: test
 test:
-	@cargo test --workspace --color=always
+	cargo hack --feature-powerset --no-dev-deps check
+	cargo test --workspace --color=always
 
 .PHONY: lint
 lint:
-	@cargo clippy --workspace --tests --color=always
+	cargo clippy --workspace --tests --color=always
 
 .PHONY: fmt
 fmt:
