@@ -21,6 +21,7 @@ struct Element {
     ty: syn::Path,
     kind: ElementKind,
     name: String,
+    attrs: Vec<syn::Attribute>,
 }
 
 fn parse_type(input: syn::Type) -> (syn::Path, ElementKind) {
@@ -66,68 +67,73 @@ fn parse_type(input: syn::Type) -> (syn::Path, ElementKind) {
     }
 }
 
-fn parse_field_attrs(attrs: &[syn::Attribute]) -> Option<String> {
-    match (attrs.first(), attrs.len()) {
-        (Some(attr), 1) => {
-            assert!(
-                attr.style == syn::AttrStyle::Outer,
-                "field attribute style needs to be an outer attribute"
-            );
-            match attr.meta {
-                syn::Meta::List(ref meta_list) => {
-                    let tag = &meta_list.path;
-                    let tag_name = match (tag.segments.first(), tag.segments.len()) {
-                        (Some(segment), 1) => segment.ident.to_string(),
-                        (_, 0) => return None,
-                        _ => panic!("invalid field attribute path"),
-                    };
-                    assert!(tag_name == "tag", "invalid field attribute path {tag_name}");
-
-                    let expr: syn::Expr = match meta_list.parse_args() {
-                        Ok(expr) => expr,
-                        Err(e) => panic!("failed parsing tag field attribute: {e}"),
-                    };
-
-                    let syn::Expr::Assign(assign) = expr else {
-                        panic!("invalid expression in tag field attribute")
-                    };
-
-                    match *assign.left {
-                        syn::Expr::Path(ref exprpath) => {
-                            let segments = &exprpath.path.segments;
-                            let (Some(segment), 1) = (segments.first(), segments.len()) else {
-                                panic!("invalid tag field attribute key")
-                            };
-
-                            assert!(segment.ident == "key", "invalid tag field attribute key");
-                        }
-                        _ => panic!("invalid expression in tag field attribute, left side"),
+fn parse_field_attrs(attrs: &mut Vec<syn::Attribute>) -> Option<String> {
+    let index_of_tag_attribute = attrs
+        .iter()
+        .enumerate()
+        .filter(|&(_i, attr)| attr.style == syn::AttrStyle::Outer)
+        .find_map(|(i, attr)| match attr.meta {
+            syn::Meta::List(ref meta_list) => {
+                let tag = &meta_list.path;
+                if let (Some(segment), 1) = (tag.segments.first(), tag.segments.len()) {
+                    if segment.ident == "tag" {
+                        Some((i, meta_list.clone()))
+                    } else {
+                        None
                     }
-
-                    match *assign.right {
-                        syn::Expr::Lit(ref expr_lit) => match expr_lit.lit {
-                            syn::Lit::Str(ref lit_str) => Some(lit_str.value()),
-                            _ => panic!("right side of tag field not a string literal"),
-                        },
-                        _ => panic!("right side of tag field attribute not a literal"),
-                    }
+                } else {
+                    None
                 }
-                _ => panic!("invalid field attribute"),
+            }
+            _ => None,
+        });
+
+    match index_of_tag_attribute {
+        Some((i, meta_list)) => {
+            let removed_attribute = attrs.remove(i);
+            drop(removed_attribute);
+
+            let expr: syn::Expr = match meta_list.parse_args() {
+                Ok(expr) => expr,
+                Err(e) => panic!("failed parsing tag field attribute: {e}"),
+            };
+
+            let syn::Expr::Assign(assign) = expr else {
+                panic!("invalid expression in tag field attribute")
+            };
+
+            match *assign.left {
+                syn::Expr::Path(ref exprpath) => {
+                    let segments = &exprpath.path.segments;
+                    let (Some(segment), 1) = (segments.first(), segments.len()) else {
+                        panic!("invalid tag field attribute key")
+                    };
+
+                    assert!(segment.ident == "key", "invalid tag field attribute key");
+                }
+                _ => panic!("invalid expression in tag field attribute, left side"),
+            }
+
+            match *assign.right {
+                syn::Expr::Lit(ref expr_lit) => match expr_lit.lit {
+                    syn::Lit::Str(ref lit_str) => Some(lit_str.value()),
+                    _ => panic!("right side of tag field not a string literal"),
+                },
+                _ => panic!("right side of tag field attribute not a literal"),
             }
         }
-        (_, 0) => None,
-        _ => panic!("invalid field attributes"),
+        None => None,
     }
 }
 
 fn parse_fields(input: impl IntoIterator<Item = syn::Field>) -> Vec<Element> {
     let mut elements = Vec::new();
-    for field in input {
+    for mut field in input {
         let ident = field.ident.expect("tuple structs not supported");
         let vis = field.vis;
         let (ty, kind) = parse_type(field.ty);
 
-        let name = parse_field_attrs(&field.attrs);
+        let name = parse_field_attrs(&mut field.attrs);
 
         elements.push(Element {
             ident: ident.clone(),
@@ -135,6 +141,7 @@ fn parse_fields(input: impl IntoIterator<Item = syn::Field>) -> Vec<Element> {
             ty,
             kind,
             name: name.unwrap_or_else(|| ident.to_string()),
+            attrs: field.attrs,
         });
     }
     elements
@@ -165,14 +172,19 @@ fn build_output(input: Input) -> TokenStream {
                 let ident = &element.ident;
                 let vis = &element.vis;
                 let ty = &element.ty;
+                let attrs = &element.attrs;
                 match element.kind {
                     ElementKind::Required => {
                         quote!(
+                            #(#attrs)
+                            *
                             #vis #ident: #ty
                         )
                     }
                     ElementKind::Optional => {
                         quote!(
+                            #(#attrs)
+                            *
                             #vis #ident: ::std::option::Option<#ty>
                         )
                     }
@@ -191,9 +203,18 @@ fn build_output(input: Input) -> TokenStream {
         let params = input.elements.iter().map(|element| {
             let ident = &element.ident;
             let ty = &element.ty;
+            let attrs = &element.attrs;
             match element.kind {
-                ElementKind::Required => quote!(#ident: #ty),
-                ElementKind::Optional => quote!(#ident: ::std::option::Option<#ty>),
+                ElementKind::Required => quote! {
+                    #(#attrs)
+                    *
+                    #ident: #ty
+                },
+                ElementKind::Optional => quote! {
+                    #(#attrs)
+                    *
+                    #ident: ::std::option::Option<#ty>
+                },
             }
         });
 
@@ -202,7 +223,12 @@ fn build_output(input: Input) -> TokenStream {
             .iter()
             .map(|element| {
                 let ident = &element.ident;
-                quote! {#ident: #ident}
+                let attrs = &element.attrs;
+                quote! {
+                    #(#attrs)
+                    *
+                    #ident: #ident
+                }
             })
             .collect();
 
@@ -210,8 +236,9 @@ fn build_output(input: Input) -> TokenStream {
             let ident = &element.ident;
             let ty = &element.ty;
             let tag_name = &element.name;
+            let attrs = &element.attrs;
 
-            let try_convert = quote!{
+            let try_convert = quote! {
                 let value: ::std::result::Result<#ty, #root::tags::ParseTagsError> = <#ty as #root::tags::TagValue<#ty>>::from_raw_tag(value)
                     .map_err(
                         |e| #root::tags::ParseTagsError::ParseTag(#root::tags::ParseTagError::InvalidTagValue {
@@ -261,6 +288,8 @@ fn build_output(input: Input) -> TokenStream {
             };
 
             quote! {
+                #(#attrs)
+                *
                 #ident: {
                     let key: #root::tags::TagKey = #root::tags::TagKey::new(#tag_name.to_owned());
 
@@ -286,9 +315,12 @@ fn build_output(input: Input) -> TokenStream {
                 let ident = &element.ident;
                 let ty= &element.ty;
                 let tag_name = &element.name;
+                let attrs= &element.attrs;
                 match element.kind {
                     ElementKind::Required => {
                         quote! {
+                            #(#attrs)
+                            *
                             {
                                 let key = #root::tags::TagKey::new(#tag_name.to_owned());
                                 let value: #root::tags::RawTagValue = <#ty as #root::tags::TagValue<#ty>>::into_raw_tag(self.#ident);
@@ -298,6 +330,8 @@ fn build_output(input: Input) -> TokenStream {
                     }
                     ElementKind::Optional => {
                         quote! {
+                            #(#attrs)
+                            *
                             {
                                 match self.#ident {
                                     ::std::option::Option::Some(value) => {
