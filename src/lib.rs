@@ -11,6 +11,7 @@ use std::{
 use aws_config::retry::RetryConfig;
 use aws_sdk_ec2::client::Waiters;
 use chrono::{DateTime, Utc};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 mod error;
@@ -40,6 +41,7 @@ macro_rules! wrap_aws_enum {
             }
         }
 
+        #[cfg(feature = "serde")]
         impl Serialize for $name {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -49,6 +51,7 @@ macro_rules! wrap_aws_enum {
             }
         }
 
+        #[cfg(feature = "serde")]
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -196,11 +199,12 @@ impl Instance {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Region {
-    #[serde(rename = "eu-central-1")]
+    #[cfg_attr(feature = "serde", serde(rename = "eu-central-1"))]
     EuCentral1,
-    #[serde(rename = "us-east-1")]
+    #[cfg_attr(feature = "serde", serde(rename = "us-east-1"))]
     UsEast1,
 }
 
@@ -269,7 +273,8 @@ pub struct RegionClient {
     pub cdn: RegionClientCdn,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct InstanceProfileName(String);
 
 impl InstanceProfileName {
@@ -278,7 +283,8 @@ impl InstanceProfileName {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct InstanceKeypairName(String);
 
 impl InstanceKeypairName {
@@ -287,7 +293,8 @@ impl InstanceKeypairName {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct SecurityGroupId(String);
 
 impl SecurityGroupId {
@@ -296,12 +303,14 @@ impl SecurityGroupId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct SecurityGroup {
     id: SecurityGroupId,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct SubnetId(String);
 
 impl SubnetId {
@@ -328,8 +337,9 @@ impl fmt::Display for SubnetId {
 
 macro_rules! string_newtype {
     ($name:ident) => {
-        #[Tag(translate = serde)]
-        #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+        #[Tag(translate = transparent)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+        #[derive(Debug, Clone, Eq, PartialEq)]
         pub struct $name(String);
 
         impl std::fmt::Display for $name {
@@ -342,7 +352,8 @@ macro_rules! string_newtype {
 
 string_newtype!(AvailabilityZone);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Subnet {
     pub id: SubnetId,
     pub availability_zone: AvailabilityZone,
@@ -383,7 +394,8 @@ impl AmiId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug)]
 pub struct Ami {
     pub id: AmiId,
     pub tags: TagList,
@@ -411,7 +423,8 @@ impl TryFrom<aws_sdk_ec2::types::Image> for Ami {
 }
 
 #[Tag(translate = manual)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct Timestamp(DateTime<Utc>);
 
 impl Timestamp {
@@ -468,7 +481,8 @@ impl TryFrom<RawImageCreationDate> for Timestamp {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Ip(net::IpAddr);
 
 impl Ip {
@@ -499,7 +513,8 @@ impl EipAllocationId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug)]
 pub struct Eip {
     pub allocation_id: EipAllocationId,
     pub ip: Ip,
@@ -568,8 +583,9 @@ impl Eip {
 
 string_newtype!(CloudfrontDistributionId);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum CloudfrontDistributionStatus {
     Deployed,
     Other(String),
@@ -597,10 +613,12 @@ impl From<String> for CloudfrontDistributionStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct EfsId(String);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Efs {
     id: EfsId,
     region: Region,
@@ -633,7 +651,8 @@ impl From<String> for CloudfrontDistributionDomain {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct CloudfrontOrigin {
     id: CloudfrontOriginId,
     domain: CloudfrontOriginDomain,
@@ -679,7 +698,8 @@ impl From<aws_sdk_cloudfront::types::Origin> for CloudfrontOrigin {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct CloudfrontDistribution {
     pub id: CloudfrontDistributionId,
     pub status: CloudfrontDistributionStatus,
@@ -793,7 +813,8 @@ pub async fn load_sdk_clients<const C: usize>(
     region_clients
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Account {
     id: String,
 }
@@ -808,7 +829,8 @@ impl Account {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct HostedZoneId(String);
 
 impl HostedZoneId {
@@ -821,7 +843,8 @@ impl HostedZoneId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Route53Zone {
     hosted_zone_id: HostedZoneId,
     name: String,

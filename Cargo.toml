@@ -56,8 +56,15 @@ chrono = { version = "0.4.*", default-features = false, features = [
 serde = { version = "1.*", default-features = false, features = [
   "std",
   "derive",
-] }
-serde_json = { version = "1.*", default-features = false, features = ["std"] }
+], optional = true }
+serde_json = { version = "1.*", default-features = false, features = [
+  "std",
+], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
+serde-tags = ["dep:serde", "dep:serde_json"]
 
 [workspace]
 resolver = "2"

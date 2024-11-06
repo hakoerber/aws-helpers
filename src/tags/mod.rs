@@ -1,7 +1,12 @@
 #![doc = include_str!("README.md")]
 use std::fmt::{self, Debug};
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+#[cfg(feature = "serde-tags")]
+use serde::de::DeserializeOwned;
+#[cfg(feature = "serde")]
+use serde::Deserialize;
+#[cfg(any(feature = "serde-tags", feature = "serde"))]
+use serde::Serialize;
 
 mod error;
 mod helpers;
@@ -43,10 +48,12 @@ where
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct RawTagValue(String);
 helpers::impl_string_wrapper!(RawTagValue);
 
+#[cfg(feature = "serde-tags")]
 pub struct TranslateSerde;
 pub struct TranslateManual;
 
@@ -57,6 +64,7 @@ pub trait Translator<S: ?Sized, T> {
     fn into_raw_tag(value: T) -> RawTagValue;
 }
 
+#[cfg(feature = "serde-tags")]
 pub trait TranslatableSerde: Serialize + DeserializeOwned {}
 pub trait TranslatableManual:
     TryFrom<RawTagValue, Error: Into<ParseTagValueError>> + Into<RawTagValue>
@@ -76,6 +84,7 @@ pub trait TagValue<V> {
     }
 }
 
+#[cfg(feature = "serde-tags")]
 impl<S, T> Translator<S, T> for TranslateSerde
 where
     T: TranslatableSerde,
@@ -118,7 +127,8 @@ where
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RawTag {
     key: TagKey,
     value: RawTagValue,
@@ -155,7 +165,8 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TagKey(String);
 helpers::impl_string_wrapper!(TagKey);
 
@@ -252,7 +263,8 @@ where
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TagList(Vec<RawTag>);
 
 impl TagList {
@@ -292,6 +304,7 @@ impl TagList {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "serde-tags")]
     use serde::{Deserialize, Serialize};
 
     use super::*;
@@ -303,6 +316,7 @@ mod tests {
         B,
     }
 
+    #[cfg(feature = "serde-tags")]
     #[Tag(translate = serde)]
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     struct MyStructTag {
@@ -358,7 +372,9 @@ mod tests {
             #[tag(key = "anothername")]
             tag6: Option<MyTag>,
             tag7: Option<MyTag>,
+            #[cfg(feature = "serde-tags")]
             tag8: MyStructTag,
+            #[cfg(feature = "serde-tags")]
             tag9: Option<MyStructTag>,
         }
 
@@ -368,6 +384,7 @@ mod tests {
             RawTag::new("tag3".to_owned(), "false".to_owned()),
             RawTag::new("myname".to_owned(), "A".to_owned()),
             RawTag::new("anothername".to_owned(), "B".to_owned()),
+            #[cfg(feature = "serde-tags")]
             RawTag::new("tag8".to_owned(), r#"{"foo":"hi","bar":false}"#.to_owned()),
         ]);
 
@@ -380,6 +397,7 @@ mod tests {
         assert!(tags.tag5 == MyTag::A);
         assert!(tags.tag6 == Some(MyTag::B));
         assert!(tags.tag7.is_none());
+        #[cfg(feature = "serde-tags")]
         assert!(
             tags.tag8
                 == MyStructTag {
@@ -387,6 +405,7 @@ mod tests {
                     bar: false
                 }
         );
+        #[cfg(feature = "serde-tags")]
         assert!(tags.tag9.is_none());
 
         let into_tags = tags.into_tags();
@@ -399,6 +418,7 @@ mod tests {
                 RawTag::new("tag3".to_owned(), "false".to_owned()),
                 RawTag::new("myname".to_owned(), "A".to_owned()),
                 RawTag::new("anothername".to_owned(), "B".to_owned()),
+                #[cfg(feature = "serde-tags")]
                 RawTag::new("tag8".to_owned(), r#"{"foo":"hi","bar":false}"#.to_owned(),),
             ])
         );
@@ -407,7 +427,7 @@ mod tests {
     #[test]
     fn test_transparent_tag() {
         #[Tag(translate = transparent)]
-        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        #[derive(PartialEq, Debug)]
         struct MyTag(String);
 
         assert_eq!(

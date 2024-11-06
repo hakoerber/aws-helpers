@@ -1,14 +1,35 @@
-use super::{
-    ParseTagValueError, TagValue, TranslatableManual, TranslatableSerde, TranslateManual,
-    TranslateSerde,
-};
+use super::{ParseTagValueError, RawTagValue, TagValue, TranslatableManual, TranslateManual};
 
-// Bools can just be handled by serde.
-impl TranslatableSerde for bool {}
+impl TranslatableManual for bool {}
+
+const TRUE_STR: &str = "true";
+const FALSE_STR: &str = "false";
 
 impl TagValue<Self> for bool {
     type Error = ParseTagValueError;
-    type Translator = TranslateSerde;
+    type Translator = TranslateManual;
+}
+
+impl TryFrom<RawTagValue> for bool {
+    type Error = ParseTagValueError;
+
+    fn try_from(value: RawTagValue) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            TRUE_STR => Ok(true),
+            FALSE_STR => Ok(false),
+            _ => Err(ParseTagValueError::InvalidBoolValue { value }),
+        }
+    }
+}
+
+impl From<bool> for RawTagValue {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::new(TRUE_STR.to_owned())
+        } else {
+            Self::new(FALSE_STR.to_owned())
+        }
+    }
 }
 
 // Due to quoting, we cannot use serde here. It would produce quoted

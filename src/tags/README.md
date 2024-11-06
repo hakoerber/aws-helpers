@@ -56,14 +56,10 @@ in a struct that is using `#[Tags]`:
 
 ```rust
 use aws_lib::tags::{Tag, Tags};
-use serde::{Serialize, Deserialize};
 
-#[Tag(translate = serde)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct MyTag {
-    foo: String,
-    bar: bool,
-}
+#[Tag(translate = transparent)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MyTag(String);
 
 #[Tags]
 struct MyTags {
