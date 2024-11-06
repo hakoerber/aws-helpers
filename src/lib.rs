@@ -643,6 +643,10 @@ impl CloudfrontOrigin {
     pub const fn id(&self) -> &CloudfrontOriginId {
         &self.id
     }
+
+    pub const fn domain(&self) -> &CloudfrontOriginDomain {
+        &self.domain
+    }
 }
 
 string_newtype!(CloudfrontOriginId);
@@ -845,6 +849,14 @@ impl Route53Zone {
             hosted_zone_id,
             name,
         }
+    }
+
+    pub const fn hosted_zone_id(&self) -> &HostedZoneId {
+        &self.hosted_zone_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
