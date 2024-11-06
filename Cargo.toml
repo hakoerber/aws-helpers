@@ -13,7 +13,7 @@ categories.workspace = true
 readme.workspace = true
 
 [workspace.package]
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.81"
 
@@ -26,7 +26,7 @@ categories = ["api-bindings"]
 readme = "README.md"
 
 [dependencies]
-aws-macros = { path = "./aws_macros", version = "0.2.*" }
+aws-macros = { path = "./aws_macros", version = "0.3.*" }
 aws-config = { version = "1.*", default-features = false }
 aws-sdk-ec2 = { version = "1.*", default-features = false, features = [
   "rustls",
