@@ -24,15 +24,8 @@ fn parse_enum_attributes(attrs: &[syn::Attribute]) -> Option<syn::LitStr> {
         .filter(|attr| attr.style == syn::AttrStyle::Outer)
         .find_map(|attr| match attr.meta {
             syn::Meta::List(ref meta_list) => {
-                if let (Some(name), 1) = (
-                    meta_list.path.segments.first(),
-                    meta_list.path.segments.len(),
-                ) {
-                    if name.ident == "tag" {
-                        Some(meta_list.clone())
-                    } else {
-                        None
-                    }
+                if meta_list.path.is_ident("tag") {
+                    Some(meta_list.clone())
                 } else {
                     None
                 }
@@ -49,12 +42,7 @@ fn parse_enum_attributes(attrs: &[syn::Attribute]) -> Option<syn::LitStr> {
                 syn::Expr::Assign(ref assign) => {
                     match *assign.left {
                         syn::Expr::Path(ref exprpath) => {
-                            let segments = &exprpath.path.segments;
-                            let (Some(segment), 1) = (segments.first(), segments.len()) else {
-                                panic!("invalid attribute key")
-                            };
-
-                            assert!(segment.ident == "rename", "invalid attribute key");
+                            assert!(exprpath.path.is_ident("rename"), "invalid attribute key");
                         }
                         _ => panic!("invalid expression in enum variant attribute, left side"),
                     }
@@ -103,24 +91,18 @@ fn parse_tag_attribute(expr: syn::Expr, elem: &syn::Data) -> Translator {
 
     match *assign.left {
         syn::Expr::Path(ref exprpath) => {
-            let segments = &exprpath.path.segments;
-            let (Some(segment), 1) = (segments.first(), segments.len()) else {
-                panic!("invalid attribute key")
-            };
-
-            assert!(segment.ident == "translate", "invalid attribute key");
+            assert!(exprpath.path.is_ident("translate"), "invalid attribute key");
         }
         _ => panic!("invalid expression in tag field attribute, left side"),
     }
 
     match *assign.right {
         syn::Expr::Path(ref exprpath) => {
-            let segments = &exprpath.path.segments;
-            let (Some(segment), 1) = (segments.first(), segments.len()) else {
+            let Some(ident) = exprpath.path.get_ident() else {
                 panic!("invalid attribute key")
             };
 
-            match segment.ident.to_string().as_str() {
+            match ident.to_string().as_str() {
                 "serde" => Translator::Serde,
                 "manual" => Translator::Manual,
                 "transparent" =>

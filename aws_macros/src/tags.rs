@@ -26,13 +26,7 @@ struct Element {
 
 fn is_cfg_attribute(attr: &syn::Attribute) -> bool {
     match attr.meta {
-        syn::Meta::List(ref meta_list) => {
-            let segments = &meta_list.path.segments;
-            match (segments.first(), segments.len()) {
-                (Some(segment), 1) => segment.ident == "cfg",
-                _ => false,
-            }
-        }
+        syn::Meta::List(ref meta_list) => meta_list.path.is_ident("cfg"),
         _ => false,
     }
 }
@@ -93,13 +87,8 @@ fn parse_field_attrs(attrs: &mut Vec<syn::Attribute>) -> Option<String> {
         .filter(|&(_i, attr)| attr.style == syn::AttrStyle::Outer)
         .find_map(|(i, attr)| match attr.meta {
             syn::Meta::List(ref meta_list) => {
-                let tag = &meta_list.path;
-                if let (Some(segment), 1) = (tag.segments.first(), tag.segments.len()) {
-                    if segment.ident == "tag" {
-                        Some((i, meta_list.clone()))
-                    } else {
-                        None
-                    }
+                if meta_list.path.is_ident("tag") {
+                    Some((i, meta_list.clone()))
                 } else {
                     None
                 }
@@ -123,12 +112,10 @@ fn parse_field_attrs(attrs: &mut Vec<syn::Attribute>) -> Option<String> {
 
             match *assign.left {
                 syn::Expr::Path(ref exprpath) => {
-                    let segments = &exprpath.path.segments;
-                    let (Some(segment), 1) = (segments.first(), segments.len()) else {
-                        panic!("invalid tag field attribute key")
-                    };
-
-                    assert!(segment.ident == "key", "invalid tag field attribute key");
+                    assert!(
+                        exprpath.path.is_ident("key"),
+                        "invalid tag field attribute key"
+                    );
                 }
                 _ => panic!("invalid expression in tag field attribute, left side"),
             }
