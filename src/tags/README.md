@@ -51,14 +51,14 @@ strategies:
   - `impl From<T> for RawTagValue`: How to turn `T` back into the value of a
     tag. This cannot fail.
 
-There is a [`macro@Tag`] macro that selects the strategy, which can then be used
-in a struct that is using `#[Tags]`:
+There is a [`macro@Tag`] derive macro that selects the strategy, which can then
+be used in a struct that is using `#[Tags]`:
 
 ```rust
 use aws_lib::tags::{Tag, Tags};
 
-#[Tag(translate = transparent)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Tag, Debug, Clone, PartialEq, Eq)]
+#[tag(translate = transparent)]
 struct MyTag(String);
 
 #[Tags]

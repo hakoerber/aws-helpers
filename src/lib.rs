@@ -337,9 +337,9 @@ impl fmt::Display for SubnetId {
 
 macro_rules! string_newtype {
     ($name:ident) => {
-        #[Tag(translate = transparent)]
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-        #[derive(Debug, Clone, Eq, PartialEq)]
+        #[derive(Debug, Clone, Eq, PartialEq, Tag)]
+        #[tag(translate = transparent)]
         pub struct $name(String);
 
         impl std::fmt::Display for $name {
@@ -422,9 +422,9 @@ impl TryFrom<aws_sdk_ec2::types::Image> for Ami {
     }
 }
 
-#[Tag(translate = manual)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(Tag, Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[tag(translate = manual)]
 pub struct Timestamp(DateTime<Utc>);
 
 impl Timestamp {

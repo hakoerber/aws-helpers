@@ -18,19 +18,18 @@ enum Translator {
     Transparent(TransparentKind),
 }
 
-fn parse_enum_attributes(attrs: &mut Vec<syn::Attribute>) -> Option<syn::LitStr> {
+fn parse_enum_attributes(attrs: &[syn::Attribute]) -> Option<syn::LitStr> {
     let index_of_tag_attribute = attrs
         .iter()
-        .enumerate()
-        .filter(|&(_i, attr)| attr.style == syn::AttrStyle::Outer)
-        .find_map(|(i, attr)| match attr.meta {
+        .filter(|attr| attr.style == syn::AttrStyle::Outer)
+        .find_map(|attr| match attr.meta {
             syn::Meta::List(ref meta_list) => {
                 if let (Some(name), 1) = (
                     meta_list.path.segments.first(),
                     meta_list.path.segments.len(),
                 ) {
                     if name.ident == "tag" {
-                        Some((i, meta_list.clone()))
+                        Some(meta_list.clone())
                     } else {
                         None
                     }
@@ -42,11 +41,7 @@ fn parse_enum_attributes(attrs: &mut Vec<syn::Attribute>) -> Option<syn::LitStr>
         });
 
     match index_of_tag_attribute {
-        Some((i, meta_list)) => {
-            // `i` came from `enumerate()` and is guaranteed to be in bounds
-            let removed_attribute = attrs.remove(i);
-            drop(removed_attribute);
-
+        Some(meta_list) => {
             let expr: syn::Expr =
                 syn::parse(meta_list.tokens.into()).expect("expected expr in macro attribute");
 
@@ -79,10 +74,10 @@ fn parse_enum_attributes(attrs: &mut Vec<syn::Attribute>) -> Option<syn::LitStr>
     }
 }
 
-fn parse_transparent_enum(mut e: syn::ItemEnum) -> (Translator, syn::Item) {
+fn parse_transparent_enum(e: &syn::DataEnum) -> Translator {
     let variants = e
         .variants
-        .iter_mut()
+        .iter()
         .map(|variant| {
             assert!(
                 variant.discriminant.is_none(),
@@ -92,25 +87,16 @@ fn parse_transparent_enum(mut e: syn::ItemEnum) -> (Translator, syn::Item) {
                 syn::Fields::Unit => (),
                 _ => panic!("enum cannot have fields in variants"),
             }
-            let rename = parse_enum_attributes(&mut variant.attrs);
+            let rename = parse_enum_attributes(&variant.attrs);
 
             (variant.ident.clone(), rename)
         })
         .collect::<Vec<(syn::Ident, Option<syn::LitStr>)>>();
 
-    (
-        Translator::Transparent(TransparentKind::SimpleEnum { variants }),
-        e.into(),
-    )
+    Translator::Transparent(TransparentKind::SimpleEnum { variants })
 }
 
-pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let root = quote! {::aws_lib};
-
-    let expr: syn::Expr = syn::parse(attr).expect("expected expr in macro attribute");
-
-    let elem = syn::parse_macro_input!(item as syn::Item);
-
+fn parse_tag_attribute(expr: syn::Expr, elem: &syn::Data) -> Translator {
     let syn::Expr::Assign(assign) = expr else {
         panic!("invalid expression in macro attribute")
     };
@@ -127,7 +113,7 @@ pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => panic!("invalid expression in tag field attribute, left side"),
     }
 
-    let (translator, elem) = match *assign.right {
+    match *assign.right {
         syn::Expr::Path(ref exprpath) => {
             let segments = &exprpath.path.segments;
             let (Some(segment), 1) = (segments.first(), segments.len()) else {
@@ -135,45 +121,71 @@ pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
             };
 
             match segment.ident.to_string().as_str() {
-                "serde" => (Translator::Serde, elem),
-                "manual" => (Translator::Manual, elem),
-                "transparent" => match elem {
-                    syn::Item::Struct(ref s) => match s.fields {
-                        syn::Fields::Unnamed(ref fields) => {
-                            let (Some(field), 1) = (fields.unnamed.first(), fields.unnamed.len())
-                            else {
-                                panic!(
-                                        "transparent translation is only available for newtype-style macros"
-                                    )
-                            };
-                            (
+                "serde" => Translator::Serde,
+                "manual" => Translator::Manual,
+                "transparent" =>
+                {
+                    #[expect(
+                        clippy::match_wildcard_for_single_variants,
+                        reason = "just by chance is there only one additional variant"
+                    )]
+                    match *elem {
+                        syn::Data::Struct(ref s) => match s.fields {
+                            syn::Fields::Unnamed(ref fields) => {
+                                let (Some(field), 1) =
+                                    (fields.unnamed.first(), fields.unnamed.len())
+                                else {
+                                    panic!(
+                                            "transparent translation is only available for newtype-style macros"
+                                        )
+                                };
                                 Translator::Transparent(TransparentKind::NewtypeStruct {
                                     ty: field.ty.clone(),
-                                }),
-                                elem,
-                            )
+                                })
+                            }
+                            _ => panic!(
+                                "transparent translation is only available for newtype-style macros"
+                            ),
+                        },
+                        syn::Data::Enum(ref e) => parse_transparent_enum(e),
+                        _ => {
+                            panic!("transparent translation is only available for newtype-style macros")
                         }
-                        _ => panic!(
-                            "transparent translation is only available for newtype-style macros"
-                        ),
-                    },
-
-                    syn::Item::Enum(e) => parse_transparent_enum(e),
-                    _ => {
-                        panic!("transparent translation is only available for newtype-style macros")
                     }
-                },
+                }
                 t => panic!("invalid translator {t}"),
             }
         }
         _ => panic!("invalid expression in tag field attribute, left side"),
-    };
+    }
+}
 
-    let name = match elem {
-        syn::Item::Struct(ref s) => &s.ident,
-        syn::Item::Enum(ref e) => &e.ident,
-        _ => panic!("only applicable to structs/enums"),
-    };
+pub(crate) fn transform(input: TokenStream) -> TokenStream {
+    let root = quote! {::aws_lib};
+
+    let input = syn::parse_macro_input!(input as syn::DeriveInput);
+
+    let expr = input
+        .attrs
+        .into_iter()
+        .find_map(|attr| match attr.meta {
+            syn::Meta::List(meta_list) => {
+                if meta_list.path.is_ident("tag") {
+                    Some(
+                        syn::parse2::<syn::Expr>(meta_list.tokens)
+                            .expect("invalid expression in tag attribute"),
+                    )
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .expect("Tag derive macro requires a tag attribute");
+
+    let translator = parse_tag_attribute(expr, &input.data);
+
+    let name = input.ident;
 
     let translator = match translator {
         Translator::Serde => quote! {
@@ -271,7 +283,6 @@ pub(crate) fn transform(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     quote! {
-        #elem
         #translator
     }
     .into()

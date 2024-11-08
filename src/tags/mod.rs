@@ -309,16 +309,16 @@ mod tests {
 
     use super::*;
 
-    #[Tag(translate = manual)]
-    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[derive(Tag, Debug, Clone, PartialEq, Eq)]
+    #[tag(translate = manual)]
     enum MyTag {
         A,
         B,
     }
 
     #[cfg(feature = "serde-tags")]
-    #[Tag(translate = serde)]
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Tag, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[tag(translate = serde)]
     struct MyStructTag {
         foo: String,
         bar: bool,
@@ -426,8 +426,8 @@ mod tests {
 
     #[test]
     fn test_transparent_tag() {
-        #[Tag(translate = transparent)]
-        #[derive(PartialEq, Debug)]
+        #[derive(Tag, PartialEq, Debug)]
+        #[tag(translate = transparent)]
         struct MyTag(String);
 
         assert_eq!(
@@ -442,8 +442,8 @@ mod tests {
 
     #[test]
     fn test_enums() {
-        #[Tag(translate = transparent)]
-        #[derive(PartialEq, Debug)]
+        #[derive(PartialEq, Debug, Tag)]
+        #[tag(translate = transparent)]
         enum MyCoolioTag {
             A,
             #[tag(rename = "C")]
